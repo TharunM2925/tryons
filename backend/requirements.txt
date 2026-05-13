@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+sqlalchemy
+alembic
+asyncpg
+pydantic
+pydantic-settings
+opencv-python-headless
+numpy
+pillow
+aiofiles
+python-jose[cryptography]
+passlib[bcrypt]
+httpx
