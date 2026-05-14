@@ -491,37 +491,25 @@ class _TattooOverlay extends StatelessWidget {
                             sigmaX: tryOnProvider.edgeSoftness,
                             sigmaY: tryOnProvider.edgeSoftness,
                           ),
-                          child: ColorFiltered(
-                            colorFilter: ColorFilter.mode(
-                              // Tint pure black ink to a slight dark blue/grey depending on darkness
-                              const Color(0xFF1B2A36).withOpacity(1.0 - tryOnProvider.inkDarkness),
-                              BlendMode.srcATop,
-                            ),
-                            child: tattooBytes != null
-                                ? Image.memory(
-                                    tattooBytes!,
-                                    width: 240 * tryOnProvider.tattooScale,
-                                    height: 240 * tryOnProvider.tattooScale,
-                                    fit: BoxFit.contain,
-                                    filterQuality: FilterQuality.high,
-                                    isAntiAlias: true,
-                                    // Multiply mode helps dark pixels embed into skin visually
-                                    colorBlendMode: BlendMode.multiply,
-                                    color: Colors.black.withOpacity(tryOnProvider.inkDarkness),
-                                  )
-                                : Image.network(
-                                    apiService.buildImageUrl(tattoo!.imageUrl),
-                                    width: 240 * tryOnProvider.tattooScale,
-                                    height: 240 * tryOnProvider.tattooScale,
-                                    fit: BoxFit.contain,
-                                    filterQuality: FilterQuality.high,
-                                    isAntiAlias: true,
-                                    colorBlendMode: BlendMode.multiply,
-                                    color: Colors.black.withOpacity(tryOnProvider.inkDarkness),
-                                    errorBuilder: (_, __, ___) =>
-                                        const SizedBox.shrink(),
-                                  ),
-                          ),
+                          child: tattooBytes != null
+                              ? Image.memory(
+                                  tattooBytes!,
+                                  width: 240 * tryOnProvider.tattooScale,
+                                  height: 240 * tryOnProvider.tattooScale,
+                                  fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.high,
+                                  isAntiAlias: true,
+                                )
+                              : Image.network(
+                                  apiService.buildImageUrl(tattoo!.imageUrl),
+                                  width: 240 * tryOnProvider.tattooScale,
+                                  height: 240 * tryOnProvider.tattooScale,
+                                  fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.high,
+                                  isAntiAlias: true,
+                                  errorBuilder: (_, __, ___) =>
+                                      const SizedBox.shrink(),
+                                ),
                         ),
                       ),
                     ),
