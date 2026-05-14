@@ -164,7 +164,17 @@ class _CameraTryOnScreenState extends State<CameraTryOnScreen>
     setState(() => _isCapturing = true);
 
     try {
-      // Capture the repaint boundary (camera + overlay composite)
+      _showSnack('Processing capture...', isSuccess: true);
+      
+      // 1. Capture the camera image
+      final cameraFile = await _cameraController!.takePicture();
+      final cameraBytes = await cameraFile.readAsBytes();
+      
+      final codec = await ui.instantiateImageCodec(cameraBytes);
+      final frameInfo = await codec.getNextFrame();
+      final cameraUiImage = frameInfo.image;
+
+      // 2. Capture the tattoo overlay
       final boundary = _repaintKey.currentContext?.findRenderObject()
           as RenderRepaintBoundary?;
       if (boundary == null) {
@@ -172,8 +182,41 @@ class _CameraTryOnScreenState extends State<CameraTryOnScreen>
         return;
       }
 
-      final image = await boundary.toImage(pixelRatio: 2.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final pixelRatio = MediaQuery.of(context).devicePixelRatio;
+      final tattooUiImage = await boundary.toImage(pixelRatio: pixelRatio);
+
+      // 3. Composite them
+      final screenSize = MediaQuery.of(context).size;
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      
+      final targetRect = Rect.fromLTWH(0, 0, screenSize.width * pixelRatio, screenSize.height * pixelRatio);
+
+      // Draw camera image
+      canvas.save();
+      if (_isFrontCamera) {
+        // Mirror front camera
+        canvas.translate(targetRect.width, 0);
+        canvas.scale(-1, 1);
+      }
+      paintImage(
+        canvas: canvas,
+        rect: targetRect,
+        image: cameraUiImage,
+        fit: BoxFit.cover,
+      );
+      canvas.restore();
+
+      // Draw tattoo overlay
+      canvas.drawImage(tattooUiImage, Offset.zero, Paint());
+
+      final picture = recorder.endRecording();
+      final finalImage = await picture.toImage(
+        targetRect.width.toInt(), 
+        targetRect.height.toInt(),
+      );
+
+      final byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) return;
 
       final pngBytes = byteData.buffer.asUint8List();
@@ -266,20 +309,19 @@ class _CameraTryOnScreenState extends State<CameraTryOnScreen>
           body: Stack(
             children: [
               // ── Camera Layer ──────────────────────────────────────────
-              RepaintBoundary(
-                key: _repaintKey,
-                child: Stack(
-                  children: [
-                    _buildCameraLayer(),
-                    // Tattoo overlay
-                    if (_isCameraInitialized &&
-                        (tattoos.selectedTattoo != null ||
-                            tattooBytes != null))
-                      _TattooOverlay(
-                        tattoo: tattoos.selectedTattoo,
-                        tattooBytes: tattooBytes,
-                        apiService: context.read<ApiService>(),
-                        tryOnProvider: tryOn,
+              Stack(
+                children: [
+                  _buildCameraLayer(),
+                  // Tattoo overlay
+                  if (_isCameraInitialized &&
+                      (tattoos.selectedTattoo != null ||
+                          tattooBytes != null))
+                    _TattooOverlay(
+                      repaintKey: _repaintKey,
+                      tattoo: tattoos.selectedTattoo,
+                      tattooBytes: tattooBytes,
+                      apiService: context.read<ApiService>(),
+                      tryOnProvider: tryOn,
                         onScaleStart: (_) {
                           _baseScale = tryOn.tattooScale;
                           _baseRotation = tryOn.tattooRotation;
@@ -399,6 +441,7 @@ class _CameraTryOnScreenState extends State<CameraTryOnScreen>
 // ─────────────────────────── Overlay Widget ──────────────────────────────────
 
 class _TattooOverlay extends StatelessWidget {
+  final GlobalKey repaintKey;
   final TattooModel? tattoo;
   final Uint8List? tattooBytes;
   final ApiService apiService;
@@ -407,6 +450,7 @@ class _TattooOverlay extends StatelessWidget {
   final void Function(ScaleUpdateDetails) onScaleUpdate;
 
   const _TattooOverlay({
+    required this.repaintKey,
     this.tattoo,
     this.tattooBytes,
     required this.apiService,
@@ -418,50 +462,53 @@ class _TattooOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: GestureDetector(
-        onScaleStart: onScaleStart,
-        onScaleUpdate: onScaleUpdate,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final center = Offset(
-              constraints.maxWidth / 2 + tryOnProvider.tattooPosition.dx,
-              constraints.maxHeight / 2 + tryOnProvider.tattooPosition.dy,
-            );
+      child: RepaintBoundary(
+        key: repaintKey,
+        child: GestureDetector(
+          onScaleStart: onScaleStart,
+          onScaleUpdate: onScaleUpdate,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final center = Offset(
+                constraints.maxWidth / 2 + tryOnProvider.tattooPosition.dx,
+                constraints.maxHeight / 2 + tryOnProvider.tattooPosition.dy,
+              );
 
-            return Stack(
-              children: [
-                Positioned(
-                  left: center.dx - 120 * tryOnProvider.tattooScale,
-                  top: center.dy - 120 * tryOnProvider.tattooScale,
-                  child: Transform.rotate(
-                    angle: tryOnProvider.tattooRotation * math.pi / 180,
-                    child: Opacity(
-                      opacity: tryOnProvider.tattooOpacity,
-                      child: tattooBytes != null
-                          ? Image.memory(
-                              tattooBytes!,
-                              width: 240 * tryOnProvider.tattooScale,
-                              height: 240 * tryOnProvider.tattooScale,
-                              fit: BoxFit.contain,
-                              filterQuality: FilterQuality.high,
-                              isAntiAlias: true,
-                            )
-                          : Image.network(
-                              apiService.buildImageUrl(tattoo!.imageUrl),
-                              width: 240 * tryOnProvider.tattooScale,
-                              height: 240 * tryOnProvider.tattooScale,
-                              fit: BoxFit.contain,
-                              filterQuality: FilterQuality.high,
-                              isAntiAlias: true,
-                              errorBuilder: (_, __, ___) =>
-                                  const SizedBox.shrink(),
-                            ),
+              return Stack(
+                children: [
+                  Positioned(
+                    left: center.dx - 120 * tryOnProvider.tattooScale,
+                    top: center.dy - 120 * tryOnProvider.tattooScale,
+                    child: Transform.rotate(
+                      angle: tryOnProvider.tattooRotation * math.pi / 180,
+                      child: Opacity(
+                        opacity: tryOnProvider.tattooOpacity,
+                        child: tattooBytes != null
+                            ? Image.memory(
+                                tattooBytes!,
+                                width: 240 * tryOnProvider.tattooScale,
+                                height: 240 * tryOnProvider.tattooScale,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.high,
+                                isAntiAlias: true,
+                              )
+                            : Image.network(
+                                apiService.buildImageUrl(tattoo!.imageUrl),
+                                width: 240 * tryOnProvider.tattooScale,
+                                height: 240 * tryOnProvider.tattooScale,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.high,
+                                isAntiAlias: true,
+                                errorBuilder: (_, __, ___) =>
+                                    const SizedBox.shrink(),
+                              ),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
