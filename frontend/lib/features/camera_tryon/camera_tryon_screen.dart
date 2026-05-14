@@ -344,7 +344,6 @@ class _CameraTryOnScreenState extends State<CameraTryOnScreen>
                       ),
                   ],
                 ),
-              ),
 
               // ── Skin Detection Status Banner ──────────────────────────
               if (_isCameraInitialized)
