@@ -1,9 +1,8 @@
 /// App-wide constants for InkVision AI.
 class AppConstants {
   // ── API ────────────────────────────────────────────────────────────────
-  static const String baseUrl = 'http://localhost:8000';
-  // static const String baseUrl = 'https://web-production-12eb8.up.railway.app';
-  // For Android Emulator use: static const String baseUrl = 'http://10.0.2.2:8000';
+  // static const String baseUrl = 'http://localhost:8000';
+  static const String baseUrl = 'https://web-production-12eb8.up.railway.app';
   // For Android Emulator use: static const String baseUrl = 'http://10.0.2.2:8000';
 
   static const Duration connectTimeout = Duration(seconds: 15);
