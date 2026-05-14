@@ -428,8 +428,12 @@ class _CameraTryOnScreenState extends State<CameraTryOnScreen>
       child: FittedBox(
         fit: BoxFit.cover,
         child: SizedBox(
-          width: _cameraController!.value.previewSize!.height,
-          height: _cameraController!.value.previewSize!.width,
+          width: kIsWeb 
+              ? _cameraController!.value.previewSize!.width 
+              : _cameraController!.value.previewSize!.height,
+          height: kIsWeb 
+              ? _cameraController!.value.previewSize!.height 
+              : _cameraController!.value.previewSize!.width,
           child: CameraPreview(_cameraController!),
         ),
       ),
