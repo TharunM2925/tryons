@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../data/models/tattoo_model.dart';
 import '../../data/services/api_service.dart';
@@ -56,6 +55,31 @@ class TattooProvider extends ChangeNotifier {
 
     try {
       final tattoo = await _apiService.uploadTattoo(file: file, name: name);
+      _tattoos.insert(0, tattoo);
+      _selectedTattoo = tattoo;
+      notifyListeners();
+      return tattoo;
+    } catch (e) {
+      _error = _formatError(e);
+      notifyListeners();
+      return null;
+    } finally {
+      _isUploading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<TattooModel?> uploadTattooBytes({
+    required List<int> bytes,
+    required String fileName,
+    required String name,
+  }) async {
+    _isUploading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final tattoo = await _apiService.uploadTattooBytes(bytes: bytes, fileName: fileName, name: name);
       _tattoos.insert(0, tattoo);
       _selectedTattoo = tattoo;
       notifyListeners();

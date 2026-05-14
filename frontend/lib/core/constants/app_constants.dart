@@ -1,9 +1,9 @@
 /// App-wide constants for InkVision AI.
 class AppConstants {
   // ── API ────────────────────────────────────────────────────────────────
-  /// Backend base URL — points to Railway production backend.
-  static const String baseUrl = 'https://web-production-12eb8.up.railway.app';
-  // For local dev use: static const String baseUrl = 'http://localhost:8000';
+  static const String baseUrl = 'http://localhost:8000';
+  // static const String baseUrl = 'https://web-production-12eb8.up.railway.app';
+  // For Android Emulator use: static const String baseUrl = 'http://10.0.2.2:8000';
   // For Android Emulator use: static const String baseUrl = 'http://10.0.2.2:8000';
 
   static const Duration connectTimeout = Duration(seconds: 15);
@@ -19,9 +19,9 @@ class AppConstants {
 
   // ── Tattoo Overlay Defaults ────────────────────────────────────────────
   static const double defaultTattooOpacity = 0.9;
-  static const double defaultTattooScale = 0.7;
-  static const double minTattooScale = 0.1;
-  static const double maxTattooScale = 5.0;
+  static const double defaultTattooScale = 1.0;
+  static const double minTattooScale = 0.5;
+  static const double maxTattooScale = 3.0;
 
   // ── Branding ──────────────────────────────────────────────────────────
   static const String appName = 'InkVision AI';

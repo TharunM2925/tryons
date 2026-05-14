@@ -100,7 +100,7 @@ class _HistoryCard extends StatelessWidget {
               width: double.infinity,
               height: 200,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 height: 200,
                 color: AppTheme.bgElevated,
                 child: const Center(

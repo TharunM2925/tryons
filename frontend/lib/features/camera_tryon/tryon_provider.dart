@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../data/models/tattoo_model.dart';
 import '../../data/models/tryon_result_model.dart';
 import '../../data/services/api_service.dart';
 import '../../core/constants/app_constants.dart';
@@ -15,6 +14,11 @@ class TryOnProvider extends ChangeNotifier {
   double _tattooScale = AppConstants.defaultTattooScale;
   double _tattooRotation = 0.0;
   double _tattooOpacity = AppConstants.defaultTattooOpacity;
+
+  // ── Realism Controls ───────────────────────────────────────────────────
+  double _edgeSoftness = 0.0;     // 0.0 to 10.0
+  double _inkDarkness = 1.0;      // 0.0 to 1.0
+  double _realismIntensity = 0.5; // 0.0 to 1.0
 
   // ── Skin Detection State ───────────────────────────────────────────────
   bool _skinDetected = false;
@@ -32,6 +36,11 @@ class TryOnProvider extends ChangeNotifier {
   double get tattooScale => _tattooScale;
   double get tattooRotation => _tattooRotation;
   double get tattooOpacity => _tattooOpacity;
+  
+  double get edgeSoftness => _edgeSoftness;
+  double get inkDarkness => _inkDarkness;
+  double get realismIntensity => _realismIntensity;
+
   bool get skinDetected => _skinDetected;
   Map<String, dynamic>? get boundingBox => _boundingBox;
   bool get isProcessingFrame => _isProcessingFrame;
@@ -57,6 +66,37 @@ class TryOnProvider extends ChangeNotifier {
       AppConstants.minTattooScale,
       AppConstants.maxTattooScale,
     );
+    notifyListeners();
+  }
+
+  void setScale(double scale) {
+    _tattooScale = scale.clamp(
+      AppConstants.minTattooScale,
+      AppConstants.maxTattooScale,
+    );
+    notifyListeners();
+  }
+
+  void setOpacity(double opacity) {
+    _tattooOpacity = opacity.clamp(0.0, 1.0);
+    notifyListeners();
+  }
+
+  void setEdgeSoftness(double softness) {
+    _edgeSoftness = softness.clamp(0.0, 10.0);
+    notifyListeners();
+  }
+
+  void setInkDarkness(double darkness) {
+    _inkDarkness = darkness.clamp(0.0, 1.0);
+    notifyListeners();
+  }
+
+  void setRealismIntensity(double intensity) {
+    _realismIntensity = intensity.clamp(0.0, 1.0);
+    // Realism automatically ties opacity and edge softness
+    _tattooOpacity = 0.85 - (intensity * 0.2); // 0.85 -> 0.65
+    _edgeSoftness = intensity * 4.0;           // 0.0 -> 4.0
     notifyListeners();
   }
 
@@ -106,15 +146,15 @@ class TryOnProvider extends ChangeNotifier {
       _skinStatusMessage = result['message'] ?? '';
 
       // If skin detected and tattoo not yet positioned, center on skin bbox
-      if (_skinDetected &&
-          _boundingBox != null &&
-          _tattooPosition == Offset.zero) {
-        final bb = _boundingBox!;
-        _tattooPosition = Offset(
-          (bb['x'] as int) + (bb['width'] as int) / 2.0,
-          (bb['y'] as int) + (bb['height'] as int) / 2.0,
-        );
-      }
+      // if (_skinDetected &&
+      //     _boundingBox != null &&
+      //     _tattooPosition == Offset.zero) {
+      //   final bb = _boundingBox!;
+      //   _tattooPosition = Offset(
+      //     (bb['x'] as int) + (bb['width'] as int) / 2.0,
+      //     (bb['y'] as int) + (bb['height'] as int) / 2.0,
+      //   );
+      // }
     } catch (_) {
       // Silently fail — keep showing last known state
     } finally {

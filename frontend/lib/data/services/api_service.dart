@@ -52,7 +52,15 @@ class ApiService {
   }) async {
     final bytes = await file.readAsBytes();
     final fileName = file.name ?? 'upload.png';
+    return uploadTattooBytes(bytes: bytes, fileName: fileName, name: name);
+  }
 
+  /// Upload processed tattoo bytes directly
+  Future<TattooModel> uploadTattooBytes({
+    required List<int> bytes,
+    required String fileName,
+    required String name,
+  }) async {
     final formData = FormData.fromMap({
       'file': MultipartFile.fromBytes(
         bytes,
@@ -120,7 +128,7 @@ class ApiService {
         'scale': scale,
         'rotation': rotation,
         'opacity': opacity,
-        if (notes != null) 'notes': notes,
+        'notes': ?notes,
       },
     );
     return TryOnResultModel.fromJson(response.data);

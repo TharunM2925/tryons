@@ -9,6 +9,7 @@ import '../../data/models/tattoo_model.dart';
 import '../../data/services/api_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/loading_widget.dart';
+import '../../core/utils/tattoo_processor.dart';
 import 'tattoo_provider.dart';
 
 /// Screen for uploading and selecting tattoo designs.
@@ -22,6 +23,7 @@ class TattooUploadScreen extends StatefulWidget {
 class _TattooUploadScreenState extends State<TattooUploadScreen> {
   final _nameController = TextEditingController();
   XFile? _pickedFile;
+  Uint8List? _processedBytes;
   final _picker = ImagePicker();
 
   @override
@@ -41,17 +43,30 @@ class _TattooUploadScreenState extends State<TattooUploadScreen> {
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      setState(() => _pickedFile = picked);
-      // Pre-fill name from filename
-      if (_nameController.text.isEmpty) {
-        final name = picked.name.split('.').first.replaceAll('_', ' ');
-        _nameController.text = name;
+      final bytes = await picked.readAsBytes();
+      
+      if (!mounted) return;
+      final processed = await showDialog<Uint8List>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _TattooProcessorDialog(originalBytes: bytes),
+      );
+
+      if (processed != null) {
+        setState(() {
+          _pickedFile = picked;
+          _processedBytes = processed;
+          if (_nameController.text.isEmpty) {
+            final name = picked.name.split('.').first.replaceAll('_', ' ');
+            _nameController.text = name;
+          }
+        });
       }
     }
   }
 
   Future<void> _upload() async {
-    if (_pickedFile == null) {
+    if (_pickedFile == null || _processedBytes == null) {
       _showSnack('Please select an image first');
       return;
     }
@@ -61,8 +76,9 @@ class _TattooUploadScreenState extends State<TattooUploadScreen> {
     }
 
     final provider = context.read<TattooProvider>();
-    final tattoo = await provider.uploadTattoo(
-      file: _pickedFile!,
+    final tattoo = await provider.uploadTattooBytes(
+      bytes: _processedBytes!,
+      fileName: _pickedFile!.name,
       name: _nameController.text.trim(),
     );
 
@@ -71,6 +87,7 @@ class _TattooUploadScreenState extends State<TattooUploadScreen> {
         _showSnack('Tattoo uploaded successfully! ✓', isSuccess: true);
         setState(() {
           _pickedFile = null;
+          _processedBytes = null;
           _nameController.clear();
         });
       } else {
@@ -114,6 +131,7 @@ class _TattooUploadScreenState extends State<TattooUploadScreen> {
                   padding: const EdgeInsets.all(20),
                   child: _UploadCard(
                     pickedFile: _pickedFile,
+                    processedBytes: _processedBytes,
                     nameController: _nameController,
                     isUploading: provider.isUploading,
                     onPickImage: _pickImage,
@@ -185,6 +203,7 @@ class _TattooUploadScreenState extends State<TattooUploadScreen> {
 
 class _UploadCard extends StatelessWidget {
   final XFile? pickedFile;
+  final Uint8List? processedBytes;
   final TextEditingController nameController;
   final bool isUploading;
   final VoidCallback onPickImage;
@@ -192,6 +211,7 @@ class _UploadCard extends StatelessWidget {
 
   const _UploadCard({
     required this.pickedFile,
+    required this.processedBytes,
     required this.nameController,
     required this.isUploading,
     required this.onPickImage,
@@ -242,13 +262,13 @@ class _UploadCard extends StatelessWidget {
                     style: BorderStyle.solid,
                   ),
                 ),
-                child: pickedFile != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(13),
-                        child: kIsWeb
-                            ? Image.network(pickedFile!.path, fit: BoxFit.contain)
-                            : Image.file(File(pickedFile!.path),
-                                fit: BoxFit.contain),
+                child: processedBytes != null
+                    ? CustomPaint(
+                        painter: CheckerboardPainter(),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(13),
+                          child: Image.memory(processedBytes!, fit: BoxFit.contain),
+                        ),
                       )
                     : const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -464,4 +484,162 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TattooProcessorDialog extends StatefulWidget {
+  final Uint8List originalBytes;
+
+  const _TattooProcessorDialog({required this.originalBytes});
+
+  @override
+  State<_TattooProcessorDialog> createState() => _TattooProcessorDialogState();
+}
+
+class _TattooProcessorDialogState extends State<_TattooProcessorDialog> {
+  bool _isProcessing = false;
+  Uint8List? _processedBytes;
+  double _threshold = 180;
+  bool _invertColors = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _processImage();
+  }
+
+  Future<void> _processImage() async {
+    setState(() => _isProcessing = true);
+    
+    // Slight delay to allow UI to show loading spinner
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    final result = await TattooSheetProcessor.processCustomTattooBytes(
+      widget.originalBytes,
+      threshold: _threshold.toInt(),
+      invertColors: _invertColors,
+    );
+    if (mounted) {
+      setState(() {
+        _processedBytes = result;
+        _isProcessing = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppTheme.bgDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Remove Background',
+              style: TextStyle(fontSize: 18, color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            
+            // Preview
+            Container(
+              height: 220,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                border: Border.all(color: AppTheme.divider),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: CustomPaint(
+                painter: CheckerboardPainter(),
+                child: _isProcessing 
+                  ? const Center(child: AppLoadingWidget())
+                  : _processedBytes != null
+                      ? Image.memory(_processedBytes!, fit: BoxFit.contain)
+                      : Image.memory(widget.originalBytes, fit: BoxFit.contain),
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Controls
+            Row(
+              children: [
+                const Text('Threshold', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: AppTheme.accent,
+                      thumbColor: AppTheme.accent,
+                      trackHeight: 2,
+                    ),
+                    child: Slider(
+                      value: _threshold,
+                      min: 0,
+                      max: 255,
+                      onChanged: (v) => setState(() => _threshold = v),
+                      onChangeEnd: (_) => _processImage(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Invert Colors', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                Switch(
+                  value: _invertColors,
+                  activeColor: AppTheme.accent,
+                  onChanged: (v) {
+                    setState(() => _invertColors = v);
+                    _processImage();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: _isProcessing ? null : () => Navigator.pop(context, _processedBytes),
+                  child: const Text('Use Tattoo', style: TextStyle(color: AppTheme.bgDark, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CheckerboardPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint1 = Paint()..color = Colors.grey[800]!;
+    final paint2 = Paint()..color = Colors.grey[900]!;
+    const double squareSize = 15;
+    
+    for (double i = 0; i < size.width; i += squareSize) {
+      for (double j = 0; j < size.height; j += squareSize) {
+        final paint = ((i / squareSize).floor() + (j / squareSize).floor()) % 2 == 0 ? paint1 : paint2;
+        canvas.drawRect(Rect.fromLTWH(i, j, squareSize, squareSize), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

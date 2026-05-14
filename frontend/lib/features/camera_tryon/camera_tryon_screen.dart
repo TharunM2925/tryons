@@ -261,159 +261,159 @@ class _CameraTryOnScreenState extends State<CameraTryOnScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<TryOnProvider, TattooProvider>(
-      builder: (context, tryOn, tattoos, _) {
-        final args = ModalRoute.of(context)?.settings.arguments as Uint8List?;
-        final tattooBytes = widget.selectedTattooBytes ?? args;
+    final args = ModalRoute.of(context)?.settings.arguments as Uint8List?;
+    final tattooBytes = widget.selectedTattooBytes ?? args;
 
-        if (tattooBytes != null && _isCameraInitialized) {
-          debugPrint("Original cropped tattoo bytes: ${args?.length ?? widget.selectedTattooBytes?.length ?? 0}");
-          debugPrint("Processed transparent tattoo bytes: ${tattooBytes.length}");
-          debugPrint("Camera received tattoo bytes: ${tattooBytes.length}");
-          debugPrint("Rendering transparent tattoo overlay");
-        }
-
-        return Scaffold(
-          backgroundColor: Colors.black,
-          extendBodyBehindAppBar: true,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black38,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-              ),
-              onPressed: () => Navigator.pop(context),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.black38,
+              borderRadius: BorderRadius.circular(10),
             ),
-            actions: [
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.black38,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.flip_camera_ios_rounded,
-                      color: Colors.white, size: 20),
-                ),
-                onPressed: _flipCamera,
-              ),
-              const SizedBox(width: 8),
-            ],
+            child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
           ),
-          body: Stack(
-            children: [
-              // ── Camera Layer ──────────────────────────────────────────
-              Stack(
-                children: [
-                  _buildCameraLayer(),
-                  // Tattoo overlay
-                  if (_isCameraInitialized &&
-                      (tattoos.selectedTattoo != null ||
-                          tattooBytes != null))
-                    _TattooOverlay(
-                      repaintKey: _repaintKey,
-                      tattoo: tattoos.selectedTattoo,
-                      tattooBytes: tattooBytes,
-                      apiService: context.read<ApiService>(),
-                      tryOnProvider: tryOn,
-                        onScaleStart: (_) {
-                          _baseScale = tryOn.tattooScale;
-                          _baseRotation = tryOn.tattooRotation;
-                        },
-                        onScaleUpdate: (details) {
-                          // Handle scale
-                          tryOn.setScale(_baseScale * details.scale);
-                          
-                          // Handle rotation
-                          tryOn.updateRotation(
-                            (details.rotation - _baseRotation) *
-                                180 /
-                                math.pi,
-                          );
-                          _baseRotation = details.rotation;
-                          
-                          // Handle panning
-                          tryOn.updatePosition(details.focalPointDelta);
-                        },
-                      ),
-                  ],
-                ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black38,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.flip_camera_ios_rounded,
+                  color: Colors.white, size: 20),
+            ),
+            onPressed: _flipCamera,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Stack(
+        children: [
+          // ── Camera Layer ──────────────────────────────────────────
+          _buildCameraLayer(),
 
-              // ── Skin Detection Status Banner ──────────────────────────
-              if (_isCameraInitialized)
-                Positioned(
-                  top: 100,
-                  left: 20,
-                  right: 20,
-                  child: _SkinStatusBanner(
+          // ── Tattoo Overlay ──────────────────────────────────────────
+          if (_isCameraInitialized)
+            Consumer2<TryOnProvider, TattooProvider>(
+              builder: (context, tryOn, tattoos, _) {
+                if (tattoos.selectedTattoo == null && tattooBytes == null) {
+                  return const SizedBox.shrink();
+                }
+                return _TattooOverlay(
+                  repaintKey: _repaintKey,
+                  tattoo: tattoos.selectedTattoo,
+                  tattooBytes: tattooBytes,
+                  apiService: context.read<ApiService>(),
+                  tryOnProvider: tryOn,
+                  onScaleStart: (_) {
+                    _baseScale = tryOn.tattooScale;
+                    _baseRotation = tryOn.tattooRotation;
+                  },
+                  onScaleUpdate: (details) {
+                    tryOn.setScale(_baseScale * details.scale);
+                    tryOn.updateRotation(
+                      (details.rotation - _baseRotation) * 180 / math.pi,
+                    );
+                    _baseRotation = details.rotation;
+                    tryOn.updatePosition(details.focalPointDelta);
+                  },
+                );
+              },
+            ),
+
+          // ── Skin Detection Status Banner ──────────────────────────
+          if (_isCameraInitialized)
+            Positioned(
+              top: 100,
+              left: 20,
+              right: 20,
+              child: Consumer<TryOnProvider>(
+                builder: (context, tryOn, _) {
+                  if (!tryOn.skinDetected && tryOn.skinStatusMessage.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return _SkinStatusBanner(
                     skinDetected: tryOn.skinDetected,
                     message: tryOn.skinStatusMessage,
-                  ),
-                ),
+                  );
+                },
+              ),
+            ),
 
-              // ── No Tattoo Selected Warning ────────────────────────────
-              if (tattoos.selectedTattoo == null &&
-                  tattooBytes == null &&
-                  _isCameraInitialized)
-                Positioned(
-                  top: 140,
-                  left: 20,
-                  right: 20,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondary.withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline,
-                            color: Colors.white, size: 18),
-                        const SizedBox(width: 10),
-                        const Expanded(
-                          child: Text(
-                            'No tattoo selected. Go to Gallery to pick one.',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 13),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Gallery',
+          // ── No Tattoo Selected Warning ────────────────────────────
+          if (_isCameraInitialized)
+            Consumer<TattooProvider>(
+              builder: (context, tattoos, _) {
+                if (tattoos.selectedTattoo == null && tattooBytes == null) {
+                  return Positioned(
+                    top: 140,
+                    left: 20,
+                    right: 20,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondary.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline,
+                              color: Colors.white, size: 18),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'No tattoo selected. Go to Gallery to pick one.',
                               style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      ],
+                                  color: Colors.white, fontSize: 13),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Gallery',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
 
-              // ── Bottom Controls ───────────────────────────────────────
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: _BottomControls(
+          // ── Bottom Controls ───────────────────────────────────────
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Consumer2<TryOnProvider, TattooProvider>(
+              builder: (context, tryOn, tattoos, _) {
+                return _BottomControls(
                   tryOnProvider: tryOn,
                   selectedTattoo: tattoos.selectedTattoo,
                   isCapturing: _isCapturing,
                   onCapture: _captureResult,
                   onReset: tryOn.resetTransform,
                   onSelectTattoo: () => Navigator.pop(context),
-                ),
-              ),
-            ],
+                );
+              },
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -486,25 +486,43 @@ class _TattooOverlay extends StatelessWidget {
                       angle: tryOnProvider.tattooRotation * math.pi / 180,
                       child: Opacity(
                         opacity: tryOnProvider.tattooOpacity,
-                        child: tattooBytes != null
-                            ? Image.memory(
-                                tattooBytes!,
-                                width: 240 * tryOnProvider.tattooScale,
-                                height: 240 * tryOnProvider.tattooScale,
-                                fit: BoxFit.contain,
-                                filterQuality: FilterQuality.high,
-                                isAntiAlias: true,
-                              )
-                            : Image.network(
-                                apiService.buildImageUrl(tattoo!.imageUrl),
-                                width: 240 * tryOnProvider.tattooScale,
-                                height: 240 * tryOnProvider.tattooScale,
-                                fit: BoxFit.contain,
-                                filterQuality: FilterQuality.high,
-                                isAntiAlias: true,
-                                errorBuilder: (_, __, ___) =>
-                                    const SizedBox.shrink(),
-                              ),
+                        child: ImageFiltered(
+                          imageFilter: ui.ImageFilter.blur(
+                            sigmaX: tryOnProvider.edgeSoftness,
+                            sigmaY: tryOnProvider.edgeSoftness,
+                          ),
+                          child: ColorFiltered(
+                            colorFilter: ColorFilter.mode(
+                              // Tint pure black ink to a slight dark blue/grey depending on darkness
+                              const Color(0xFF1B2A36).withOpacity(1.0 - tryOnProvider.inkDarkness),
+                              BlendMode.srcATop,
+                            ),
+                            child: tattooBytes != null
+                                ? Image.memory(
+                                    tattooBytes!,
+                                    width: 240 * tryOnProvider.tattooScale,
+                                    height: 240 * tryOnProvider.tattooScale,
+                                    fit: BoxFit.contain,
+                                    filterQuality: FilterQuality.high,
+                                    isAntiAlias: true,
+                                    // Multiply mode helps dark pixels embed into skin visually
+                                    colorBlendMode: BlendMode.multiply,
+                                    color: Colors.black.withOpacity(tryOnProvider.inkDarkness),
+                                  )
+                                : Image.network(
+                                    apiService.buildImageUrl(tattoo!.imageUrl),
+                                    width: 240 * tryOnProvider.tattooScale,
+                                    height: 240 * tryOnProvider.tattooScale,
+                                    fit: BoxFit.contain,
+                                    filterQuality: FilterQuality.high,
+                                    isAntiAlias: true,
+                                    colorBlendMode: BlendMode.multiply,
+                                    color: Colors.black.withOpacity(tryOnProvider.inkDarkness),
+                                    errorBuilder: (_, __, ___) =>
+                                        const SizedBox.shrink(),
+                                  ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -579,29 +597,124 @@ class _BottomControls extends StatelessWidget {
               ),
             ),
 
-          // Opacity slider
+          // Size adjustment slider
           Row(
             children: [
-              const Icon(Icons.opacity, color: Colors.white54, size: 18),
-              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => tryOnProvider.setScale(tryOnProvider.tattooScale - 0.1),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  color: Colors.transparent,
+                  child: const Icon(Icons.remove, color: Colors.white54, size: 18),
+                ),
+              ),
               Expanded(
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 2,
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 7),
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                    activeTrackColor: AppTheme.accent,
+                    thumbColor: AppTheme.accent,
+                    inactiveTrackColor: Colors.white24,
+                  ),
+                  child: Slider(
+                    value: tryOnProvider.tattooScale,
+                    min: AppConstants.minTattooScale,
+                    max: AppConstants.maxTattooScale,
+                    onChanged: tryOnProvider.setScale,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => tryOnProvider.setScale(tryOnProvider.tattooScale + 0.1),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  color: Colors.transparent,
+                  child: const Icon(Icons.add, color: Colors.white54, size: 18),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 36,
+                child: Text(
+                  '${(tryOnProvider.tattooScale * 100).round()}%',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
+          ),
+          
+          // Opacity adjustment slider
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: const Icon(Icons.water_drop_outlined, color: Colors.white54, size: 20),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 2,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                    activeTrackColor: Colors.lightBlueAccent,
+                    thumbColor: Colors.lightBlueAccent,
+                    inactiveTrackColor: Colors.white24,
                   ),
                   child: Slider(
                     value: tryOnProvider.tattooOpacity,
-                    min: 0.4,
+                    min: 0.1,
                     max: 1.0,
                     onChanged: tryOnProvider.setOpacity,
                   ),
                 ),
               ),
-              Text(
-                '${(tryOnProvider.tattooOpacity * 100).round()}%',
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 36,
+                child: Text(
+                  '${(tryOnProvider.tattooOpacity * 100).round()}%',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
+          ),
+          
+          // Realism Intensity slider
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: const Icon(Icons.auto_awesome, color: Colors.white54, size: 18),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 2,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                    activeTrackColor: Colors.purpleAccent,
+                    thumbColor: Colors.purpleAccent,
+                    inactiveTrackColor: Colors.white24,
+                  ),
+                  child: Slider(
+                    value: tryOnProvider.realismIntensity,
+                    min: 0.0,
+                    max: 1.0,
+                    onChanged: tryOnProvider.setRealismIntensity,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 36,
+                child: Text(
+                  '${(tryOnProvider.realismIntensity * 100).round()}%',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  textAlign: TextAlign.right,
+                ),
               ),
             ],
           ),
