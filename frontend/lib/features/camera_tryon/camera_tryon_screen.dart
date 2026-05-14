@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:gal/gal.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/models/tattoo_model.dart';
@@ -223,11 +224,30 @@ class _CameraTryOnScreenState extends State<CameraTryOnScreen>
       final base64Str = base64Encode(pngBytes);
       final timestamp = DateTime.now().millisecondsSinceEpoch;
 
-      // Save using FileSaver (works on Web, Android, iOS, Windows, etc.)
-      await FileSaver.instance.saveFile(
-        name: 'inkvision_$timestamp.png',
-        bytes: pngBytes,
-      );
+      // Save logic (Cross-platform)
+      if (kIsWeb) {
+        await FileSaver.instance.saveFile(
+          name: 'inkvision_$timestamp.png',
+          bytes: pngBytes,
+        );
+      } else {
+        // Mobile: Save to Gallery using Gal
+        try {
+          final directory = await getTemporaryDirectory();
+          final path = '${directory.path}/inkvision_$timestamp.png';
+          final file = File(path);
+          await file.writeAsBytes(pngBytes);
+          
+          await Gal.putImage(path, album: 'InkVision');
+        } catch (e) {
+          debugPrint('Gal save error: $e');
+          // Fallback to FileSaver if Gal fails
+          await FileSaver.instance.saveFile(
+            name: 'inkvision_$timestamp.png',
+            bytes: pngBytes,
+          );
+        }
+      }
 
       // Save to backend
       final tryOnProvider = context.read<TryOnProvider>();
