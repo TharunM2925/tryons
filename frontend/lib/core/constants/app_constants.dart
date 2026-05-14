@@ -1,8 +1,8 @@
 /// App-wide constants for InkVision AI.
 class AppConstants {
   // ── API ────────────────────────────────────────────────────────────────
-  /// Backend base URL — points to Render production backend.
-  static const String baseUrl = 'https://inkvision-backend.onrender.com';
+  /// Backend base URL — points to Railway production backend.
+  static const String baseUrl = 'https://web-production-12eb8.up.railway.app';
   // For local dev use: static const String baseUrl = 'http://localhost:8000';
   // For Android Emulator use: static const String baseUrl = 'http://10.0.2.2:8000';
 
