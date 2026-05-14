@@ -100,23 +100,14 @@ class TryOnProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setScale(double scale) {
-    _tattooScale = scale.clamp(
-      AppConstants.minTattooScale,
-      AppConstants.maxTattooScale,
-    );
-    notifyListeners();
-  }
+
 
   void updateRotation(double angleDelta) {
     _tattooRotation += angleDelta;
     notifyListeners();
   }
 
-  void setOpacity(double opacity) {
-    _tattooOpacity = opacity.clamp(0.0, 1.0);
-    notifyListeners();
-  }
+
 
   void resetTransform() {
     _tattooPosition = Offset.zero;
