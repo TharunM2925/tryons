@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
+import 'package:file_saver/file_saver.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/models/tattoo_model.dart';
@@ -177,14 +178,13 @@ class _CameraTryOnScreenState extends State<CameraTryOnScreen>
 
       final pngBytes = byteData.buffer.asUint8List();
       final base64Str = base64Encode(pngBytes);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
 
-      // Save locally (Mobile only)
-      if (!kIsWeb) {
-        final dir = await getApplicationDocumentsDirectory();
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final file = File('${dir.path}/inkvision_$timestamp.png');
-        await file.writeAsBytes(pngBytes);
-      }
+      // Save using FileSaver (works on Web, Android, iOS, Windows, etc.)
+      await FileSaver.instance.saveFile(
+        name: 'inkvision_$timestamp.png',
+        bytes: pngBytes,
+      );
 
       // Save to backend
       final tryOnProvider = context.read<TryOnProvider>();

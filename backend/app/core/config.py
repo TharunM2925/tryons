@@ -6,13 +6,14 @@ All values are loaded from environment variables or .env file.
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from typing import List
+import os
 
 
 class Settings(BaseSettings):
     # App Info
     APP_NAME: str = "InkVision AI Backend"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # CORS
     ALLOWED_ORIGINS: List[str] = [
@@ -26,16 +27,32 @@ class Settings(BaseSettings):
     @classmethod
     def parse_origins(cls, v):
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
+            # Try JSON first, then fallback to comma-separated
+            import json
+            try:
+                return json.loads(v)
+            except Exception:
+                return [origin.strip() for origin in v.split(",")]
         return v
 
-    # Database
+    # Database — supports both PostgreSQL (Render) and SQLite (local)
     DATABASE_URL: str = (
-        "postgresql+asyncpg://postgres:password@localhost:5432/inkvision_db"
+        "sqlite+aiosqlite:///./inkvision.db"
     )
     SYNC_DATABASE_URL: str = (
-        "postgresql://postgres:password@localhost:5432/inkvision_db"
+        "sqlite:///./inkvision.db"
     )
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def fix_postgres_url(cls, v):
+        """Render gives postgres:// but asyncpg needs postgresql+asyncpg://"""
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif v.startswith("postgresql://") and "+asyncpg" not in v:
+                v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     # File Storage
     UPLOAD_DIR: str = "uploads"
@@ -46,7 +63,11 @@ class Settings(BaseSettings):
     @classmethod
     def parse_extensions(cls, v):
         if isinstance(v, str):
-            return [ext.strip() for ext in v.split(",")]
+            import json
+            try:
+                return json.loads(v)
+            except Exception:
+                return [ext.strip() for ext in v.split(",")]
         return v
 
     # Security

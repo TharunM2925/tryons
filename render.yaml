@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: inkvision-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: inkvision-db
+          property: connectionString
+      - key: SYNC_DATABASE_URL
+        fromDatabase:
+          name: inkvision-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: APP_NAME
+        value: "InkVision AI Backend"
+      - key: APP_VERSION
+        value: "1.0.0"
+      - key: ALLOWED_ORIGINS
+        value: '["https://inkvision-ai.vercel.app", "https://*.vercel.app", "*"]'
+      - key: ALLOWED_EXTENSIONS
+        value: '["png", "jpg", "jpeg", "webp"]'
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: MAX_FILE_SIZE_MB
+        value: "10"
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+
+databases:
+  - name: inkvision-db
+    databaseName: inkvision
+    plan: free

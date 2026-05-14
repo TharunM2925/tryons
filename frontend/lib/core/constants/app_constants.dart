@@ -1,9 +1,9 @@
 /// App-wide constants for InkVision AI.
 class AppConstants {
   // ── API ────────────────────────────────────────────────────────────────
-  /// Backend base URL. Change to your server IP for device testing.
-  /// Android emulator uses 10.0.2.2 to reach host machine localhost.
-  static const String baseUrl = 'http://localhost:8000';
+  /// Backend base URL — points to Render production backend.
+  static const String baseUrl = 'https://inkvision-backend.onrender.com';
+  // For local dev use: static const String baseUrl = 'http://localhost:8000';
   // For Android Emulator use: static const String baseUrl = 'http://10.0.2.2:8000';
 
   static const Duration connectTimeout = Duration(seconds: 15);

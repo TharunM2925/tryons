@@ -4,9 +4,21 @@ __pycache__/
 *$py.class
 venv/
 .env
+*.env.local
 
-# Uploads
+# Keep example files tracked
+!*.env.example
+
+# Uploads & DB
 backend/uploads/
+*.db
+*.sqlite
+
+# Flutter
+frontend/build/
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
 
 # OS
 .DS_Store
