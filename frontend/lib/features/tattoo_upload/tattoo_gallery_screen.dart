@@ -110,7 +110,10 @@ class _TattooGalleryScreenState extends State<TattooGalleryScreen> {
                             final isSelected = _selectedTattoo?.id == item.id;
 
                             return GestureDetector(
-                              onTap: () => setState(() => _selectedTattoo = item),
+                              onTap: () {
+                                setState(() => _selectedTattoo = item);
+                                _onTryOn();
+                              },
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 decoration: BoxDecoration(

@@ -165,10 +165,7 @@ class _TattooUploadScreenState extends State<TattooUploadScreen> {
                         apiService: context.read<ApiService>(),
                         onTap: () {
                           provider.selectTattoo(provider.tattoos[index]);
-                          _showSnack(
-                            '${provider.tattoos[index].name} selected ✓',
-                            isSuccess: true,
-                          );
+                          Navigator.pushNamed(context, AppRoutes.cameraTryOn);
                         },
                       ),
                       childCount: provider.tattoos.length,
